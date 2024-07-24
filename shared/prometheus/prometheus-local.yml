@@ -1,0 +1,33 @@
+global:
+  scrape_interval: 5s
+
+rule_files:
+  - "rule/alerts.yml"
+  - "rule/recording_rule.yml"
+
+
+scrape_configs:
+  - job_name: 'promtail'
+    static_configs:
+      - targets: ['promtail:9080']  
+
+
+  - job_name: 'spring-actuator'
+    metrics_path: '/actuator/prometheus'
+    file_sd_configs:
+      - files:
+          - '/etc/prometheus/file_sd/*.yml'
+    relabel_configs:
+      - source_labels: [__meta_filepath]
+        regex: .*/([^/]+)\.yml
+        target_label: app_name
+      - source_labels: [app_name]
+        target_label: job
+        replacement: '${1}'
+        
+alerting:
+  alertmanagers:
+    - scheme: http
+      static_configs:
+        - targets:
+            - localhost:9093

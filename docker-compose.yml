@@ -1,0 +1,145 @@
+services:
+
+  zipkin:
+      image: openzipkin/zipkin
+      container_name: zipkin
+      ports:
+        - "9411:9411"
+  #    networks: 
+       # - my-network
+
+  #tempo:
+  #  container_name: tempo
+  #  image: grafana/tempo:latest
+  #  volumes:
+  #    - ./shared/tempo:/etc
+  #    - ./tempo-data:/var/tempo
+  #  ports:
+  #    - "4320:4317"
+  #    - "4321:4318"
+  #  entrypoint:
+  #    /tempo -config.file=/etc/tempo.yml
+  
+  
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    volumes:
+      - ./shared/prometheus:/etc/prometheus/
+      - ./shared/prometheus/file_sd:/etc/prometheus/file_sd/
+
+    ports:
+      - "9090:9090"
+    command:
+      - --config.file=/etc/prometheus/prometheus-local.yml
+      - --web.enable-remote-write-receiver
+      - --web.enable-admin-api
+      - --web.enable-lifecycle
+
+  
+  loki:
+    container_name: loki
+    image: grafana/loki:latest
+    command: 
+      - "-config.file=/etc/loki/local-config.yml"
+    volumes:
+      - ./shared/loki/chunks:/loki/chunks/
+      - ./shared/loki/rules:/loki/rules/
+      - ./shared/loki/loki-config.yml:/etc/loki/local-config.yml
+    ports:
+      - "3100:3100"
+  
+  promtail:
+    container_name: promtail
+    image: grafana/promtail:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./shared/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml
+      - ./shared/promtail/file_sd:/etc/promtail/file_sd/
+    command:
+      - "-config.file=/etc/promtail/promtail-config.yml"
+      
+    depends_on:
+      - loki
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    volumes:
+      - ./shared/grafana/provisioning/datasources/:/etc/grafana/provisioning/datasources
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=false 
+    ports:
+      - "3000:3000"
+    entrypoint: /run.sh
+
+
+
+  postgres-db:
+    image: postgres:latest
+    container_name: postgres-db
+    restart: always
+    environment:
+      POSTGRES_DB: my_database   # Nombre de tu base de datos
+      POSTGRES_USER: db_user     # Usuario de tu base de datos
+      POSTGRES_PASSWORD: db_password  # Contraseña del usuario de la base de datos
+    ports:
+      - "5432:5432"
+    networks:
+      - my-network
+
+  my-spring-boot-app:
+      build:
+        context: D:/Usuarios/PM71796543/Desktop/PROJECTS/ir-hr-kronos-cloud-absences-external-api
+        dockerfile: Dockerfile
+      image: my-spring-boot-app
+      container_name: my-spring-boot-app
+      labels:
+        com.example.app.name: ir-hr-kronos-cloud-absences-external-api
+      ports:
+        - "8013:8013"
+      volumes:
+        - ./logs:/var/log/myapp
+      environment:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/my_database  # URL de conexión a PostgreSQL
+        SPRING_DATASOURCE_USERNAME: db_user                                 # Usuario de la base de datos
+        SPRING_DATASOURCE_PASSWORD: db_password                             # Contraseña del usuario de la base de datos
+      networks:
+        - my-network
+      depends_on:
+        - postgres-db  
+
+  spring-boot-app:
+    container_name: ir-budget-track-api
+    image: ir-budget-track-api
+    labels:
+      com.example.app.name: ir-budget-track-api
+    build:
+      context: D:/Usuarios/PM71796543/Desktop/PROJECTS/news/ir-budget-track-api
+      dockerfile: Dockerfile
+    volumes:
+          - ./logs:/var/log/myapp
+    ports:
+      - "8050:8050"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      APP_NAME: budget-track
+      CONFIG_IMPORT: optional:configserver:http://ir-budget-track-api:8050
+      DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/my_database
+      DATASOURCE_USERNAME: db_user
+      DATASOURCE_PASSWORD: db_password
+      DATASOURCE_DRIVER: org.postgresql.Driver
+      JPA_GENERATE_DDL: 'true'
+      JPA_SHOW_SQL: 'true'
+
+    depends_on:
+      - postgres-db    
+    networks:
+        - my-network
+
+
+networks:
+  my-network:
+    driver: bridge

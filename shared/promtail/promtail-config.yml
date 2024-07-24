@@ -1,0 +1,58 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: spring-boot-logs-production
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: [__meta_docker_container_name]
+        target_label: container
+      - source_labels: [__meta_docker_container_image]
+        target_label: image
+      - source_labels: [__meta_docker_container_label_com_example_app_name] # Assuming that this label exists
+        target_label: app_name
+      - action: replace
+        replacement: production
+        target_label: environment
+    pipeline_stages:
+      - docker: {}
+      - multiline:
+          firstline: '^\d{4}-\d{2}-\d{2}'
+          max_wait_time: 3s
+      - regex:
+          expression: '(?P<timestamp>\d{4}-\d{2}-\d{2}.*?)\s+(?P<level>(INFO|WARN|ERROR|DEBUG))\s+(?P<processId>\d+)\s+---\s+\[(?P<thread>.*?)\]\s+(?P<logger>.*?)\s+:\s+(?P<message>.*)'
+      - json:
+          expressions:
+            timestamp: timestamp
+            level: level
+            processId: processId
+            thread: thread
+            logger: logger
+            message: message
+            traceId: traceId
+            spanId: spanId
+      - labels:
+          level:
+          processId:
+          thread:
+          logger:
+          message:
+          traceId:
+          spanId:
+      - timestamp:
+          source: timestamp
+          format: RFC3339
+      - output:
+          source: message
+      - template:
+          source: level
+          template: '{{ if eq .Value "WARN" }}WARNING{{ else }}{{ .Value }}{{ end }}'

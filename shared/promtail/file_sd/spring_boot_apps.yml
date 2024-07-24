@@ -1,0 +1,15 @@
+- targets:
+    - 'my-spring-boot-app:8013'
+  labels:
+    job: 'spring-boot-app'
+    app_name: 'my-spring-boot-app'
+    environment: 'production'
+    __path__: '/var/log/myapp/*.log'
+
+- targets:
+    - 'my-spring-boot-app:801'
+  labels:
+    job: 'spring-boot-app'
+    app_name: 'my-spring-boot-app'
+    environment: 'production'
+    __path__: '/var/log/myapp/*.log'
