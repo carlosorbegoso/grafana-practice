@@ -19,11 +19,26 @@ scrape_configs:
       - files:
           - '/etc/prometheus/file_sd/*.json'
     relabel_configs:
+      - source_labels: [__meta_app_name]
+        regex: .*/([^/]+)\.json
+        target_label: __tmp_file_name
+        replacement: $1
+        action: replace
+
+      - source_labels: [__tmp_file_name]
+        regex: (.+)
+        target_label: app_name
+        replacement: $1
+        action: replace
+
       - source_labels: [__address__]
         target_label: instance
-      - source_labels: [__meta_filepath]
-        regex: .*/([^/]+)\.json
-        target_label: app_name
+        action: replace
+      
+      - action: labelmap
+        regex: __meta_(.+)
+      
+        
         
 alerting:
   alertmanagers:
