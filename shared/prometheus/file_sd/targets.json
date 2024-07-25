@@ -13,7 +13,7 @@
       }
     },
     {
-      "targets": ["host.docker.internal:8050"],
+      "targets": ["host.docker.internal:8181"],
       "labels": {
         "job": "spring-boot-app",
         "app_name": "app2",

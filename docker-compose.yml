@@ -8,17 +8,17 @@ services:
   #    networks: 
        # - my-network
 
-  #tempo:
-  #  container_name: tempo
-  #  image: grafana/tempo:latest
-  #  volumes:
-  #    - ./shared/tempo:/etc
-  #    - ./tempo-data:/var/tempo
-  #  ports:
-  #    - "4320:4317"
-  #    - "4321:4318"
-  #  entrypoint:
-  #    /tempo -config.file=/etc/tempo.yml
+  tempo:
+    container_name: tempo
+    image: grafana/tempo:latest
+    volumes:
+      - ./shared/tempo:/etc
+      - ./tempo-data:/var/tempo
+    ports:
+      - "3110:3100"  # Tempo
+      - "9411:9411" # zipkin
+    entrypoint:
+      /tempo -config.file=/etc/tempo.yml
   
   
   prometheus:
