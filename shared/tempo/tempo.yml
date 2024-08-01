@@ -1,5 +1,6 @@
 server:
   http_listen_port: 3200
+  log_level: info  # Cambia a 'debug' si necesitas más información para solucionar problemas
 
 distributor:
   receivers:
@@ -10,3 +11,21 @@ storage:
     backend: local
     local:
       path: /var/tempo/blocks
+
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+  storage:
+    path: /var/tempo/generator_storage
+
+compactor:
+  compaction:
+    block_retention: 24h  # Ajusta según tus necesidades
+
+ingester:
+  trace_idle_period: 10s
+  max_block_duration: 5m
+
+overrides:
+  metrics_generator_processors: [service-graphs, span-metrics]
